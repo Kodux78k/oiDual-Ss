@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Fusion OS Vision — Premium Spatial</title>
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#000000">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* -------------------------
+       SPATIAL THEME VARS
+       ------------------------- */
+    :root {
+      --bg: #000000;
+      --glass-base: rgba(20, 20, 20, 0.55);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --glass-highlight: rgba(255, 255, 255, 0.2);
+      --active-color: #38BDF8; /* Default, dynamic */
+      --active-glow: rgba(56,189,248,0.4);
+      --depth-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      --font-main: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* BASE RESET */
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
+    html,body { height:100%; margin:0; padding:0; background:var(--bg); color:#fff; font-family: var(--font-main); overflow: hidden; }
+    button { cursor: pointer; border:none; background:none; color:inherit; font-family:inherit; }
+    
+    /* BACKGROUND AMBIENCE */
+    .orb-bg {
+      position: fixed; width: 60vw; height: 60vw; border-radius: 50%;
+      filter: blur(120px); opacity: 0.3; z-index: -1;
+      animation: drift 20s infinite alternate ease-in-out;
+    }
+    #orb-1 { top: -10%; left: -10%; background: var(--active-color); }
+    #orb-2 { bottom: -10%; right: -10%; background: #4f46e5; animation-delay: -10s; }
+
+    @keyframes drift { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(30px, 50px) scale(1.1); } }
+
+    /* SCROLLBAR HIDING */
+    ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+    /* -------------------------
+       VISION GLASS UI
+       ------------------------- */
+    .v-glass {
+      background: var(--glass-base);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      border-radius: 24px;
+      transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease, background 0.3s;
+    }
+    
+    .v-glass:active { transform: scale(0.98); background: rgba(40,40,40,0.6); }
+
+    .v-pill {
+      background: rgba(80, 80, 80, 0.3);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 99px;
+      padding: 8px 20px;
+      font-weight: 500;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      transition: 0.2s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .v-pill:active { background: rgba(255,255,255,0.2); }
+
+    /* VIEWPORT CONTAINER */
+    #universe-viewport {
+      display: flex;
+      width: 300vw;
+      height: 100vh;
+      transform: translateX(-100vw);
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: transform;
+    }
+    .screen-panel { width:100vw; height:100vh; flex-shrink:0; position:relative; overflow-y: auto; overflow-x: hidden; padding-bottom: 120px; }
+
+    /* ACCORDION CARDS (CORTEX) */
+    .memory-card {
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+      cursor: pointer;
+      position: relative;
+    }
+    .memory-card.expanded {
+      background: rgba(60, 60, 60, 0.6);
+      border-color: var(--active-color);
+      box-shadow: 0 0 30px var(--active-glow);
+      margin: 12px 0;
+    }
+    .memory-card .card-content { max-height: 0; opacity: 0; transition: 0.4s; overflow: hidden; }
+    .memory-card.expanded .card-content { max-height: 200px; opacity: 1; margin-top: 12px; }
+    .memory-card .card-header { display: flex; justify-content: space-between; align-items: center; }
+
+    /* TTS WAVE ANIMATION */
+    .voice-wave { display: flex; gap: 3px; align-items: center; height: 16px; opacity: 0; transition: opacity 0.3s; }
+    .voice-wave.speaking { opacity: 1; }
+    .bar { width: 3px; background: var(--active-color); border-radius: 2px; animation: sound 0s infinite linear alternate; }
+    .voice-wave.speaking .bar { animation-duration: 0.4s; }
+    @keyframes sound { 0% { height: 4px; } 100% { height: 16px; } }
+
+    /* HEADER */
+    header {
+      background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+      padding: 24px; position: fixed; top: 0; width: 100%; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center;
+      pointer-events: none;
+    }
+    header > * { pointer-events: auto; }
+
+    /* NAV DOTS */
+    #nav-indicator {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 12px; z-index: 100;
+      background: rgba(20,20,20,0.6); backdrop-filter: blur(20px);
+      padding: 10px 16px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.1);
+    }
+    .dot { width: 8px; height: 8px; background: rgba(255,255,255,0.3); border-radius: 50%; transition: 0.4s cubic-bezier(0.3, 1.5, 0.7, 1); }
+    .dot.active { background: #fff; transform: scale(1.3); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+    /* GLOBAL PLAYER - FLOAT ISLAND STYLE */
+    #global-player {
+      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px) scale(0.95);
+      width: 90vw; max-width: 400px; height: 240px;
+      z-index: 90; opacity: 0; pointer-events: none;
+      transition: all 0.5s cubic-bezier(0.2, 0.9, 0.2, 1.1);
+    }
+    #global-player.active { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0) scale(1); }
+    #global-player.minimized { height: 64px; width: 280px; bottom: 90px; border-radius: 32px; }
+
+    /* UTILS */
+    .hidden { display: none !important; }
+    .fade-in { animation: fadeIn 0.6s ease forwards; }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+
+    /* MODAL */
+    #modal-overlay { backdrop-filter: blur(10px); background: rgba(0,0,0,0.4); }
+  </style>
+</head>
+<body class="text-gray-100">
+
+  <div id="orb-1" class="orb-bg"></div>
+  <div id="orb-2" class="orb-bg"></div>
+
+  <header>
+    <div class="v-pill" onclick="Identity.openInfodoseModal()">
+      <div id="header-status" class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_currentColor]"></div>
+      <span id="displayUserHeader" class="text-xs font-bold tracking-widest uppercase">SYSTEM</span>
+    </div>
+    
+    <div class="flex items-center gap-2">
+      <div id="tts-indicator" class="voice-wave hidden">
+        <div class="bar" style="animation-delay: -0.2s"></div>
+        <div class="bar" style="animation-delay: -0.1s"></div>
+        <div class="bar"></div>
+        <div class="bar" style="animation-delay: -0.3s"></div>
+      </div>
+
+      <div class="v-pill" onclick="Identity.showInfodoseModal()">
+        <span id="displayArchetypeBadge" class="text-[10px] font-black uppercase text-white/80">...</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="universe-viewport">
+
+    <section class="screen-panel pt-28 px-6" id="view-cortex">
+      <div class="max-w-3xl mx-auto h-full flex flex-col">
+        <div class="flex justify-between items-end mb-6 fade-in">
+          <div>
+            <h1 class="text-4xl font-thin tracking-tight">Córtex</h1>
+            <p class="text-sm text-white/40 font-medium tracking-wide mt-1 uppercase">Arquivo Mnemônico</p>
+          </div>
+          <button onclick="Cortex.openNewMemory()" class="v-pill bg-white/10 hover:bg-white/20">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Novo</span>
+          </button>
+        </div>
+
+        <div class="v-glass p-1 mb-6 flex items-center gap-3 px-4 fade-in" style="border-radius:16px;">
+          <i data-lucide="search" class="w-4 h-4 text-white/40"></i>
+          <input id="memory-search" oninput="Cortex.render()" class="bg-transparent w-full h-10 text-sm placeholder-white/20" placeholder="Buscar nos registros neurais..." />
+        </div>
+
+        <div id="crystal-container" class="space-y-3 pb-24 fade-in" style="animation-delay:0.1s">
+          </div>
+      </div>
+    </section>
+
+    <section class="screen-panel flex flex-col items-center justify-center relative" id="view-nexus">
+      <div class="text-center z-10 fade-in">
+        <div id="hero-orb" class="w-64 h-64 mx-auto rounded-full relative cursor-grab active:cursor-grabbing mb-8 transition-transform duration-500 hover:scale-105"
+             onmousedown="Orb.start(event)" ontouchstart="Orb.start(event)">
+             
+          <div class="absolute inset-0 rounded-full border border-white/20 animate-[spin_10s_linear_infinite]"></div>
+          <div class="absolute inset-4 rounded-full border border-white/10 animate-[spin_15s_linear_infinite_reverse]"></div>
+          
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div class="w-32 h-32 bg-white/5 backdrop-blur-2xl rounded-full border border-white/10 shadow-[0_0_60px_var(--active-glow)] flex items-center justify-center">
+               <i data-lucide="aperture" class="w-12 h-12 text-white/80"></i>
+            </div>
+          </div>
+        </div>
+
+        <h1 id="hero-title" class="text-6xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">VISION</h1>
+        <p id="archetype-status-text" class="mt-4 text-sm text-white/50 uppercase tracking-widest font-medium">Sincronizando...</p>
+
+        <div class="mt-12 flex gap-4 justify-center">
+          <button onclick="Navigation.to(0)" class="v-pill hover:scale-105 transition-transform">
+            <i data-lucide="brain-circuit" class="w-4 h-4"></i> Córtex
+          </button>
+          <button onclick="Navigation.to(2)" class="v-pill hover:scale-105 transition-transform">
+            <i data-lucide="play-circle" class="w-4 h-4"></i> DualTube
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen-panel pt-28 px-6" id="view-dualtube">
+      <div class="max-w-4xl mx-auto pb-24">
+        <div class="flex justify-between items-end mb-8 fade-in">
+          <div>
+            <h2 class="text-4xl font-thin tracking-tight">Stream</h2>
+            <p class="text-xs text-white/40 uppercase tracking-widest mt-1">Curadoria de Sinais</p>
+          </div>
+          <div class="text-right">
+             <div class="text-2xl font-bold" id="dt-watched-count">0</div>
+             <div class="text-[10px] text-white/30 uppercase">Assistidos</div>
+          </div>
+        </div>
+
+        <div id="video-categories" class="space-y-10 fade-in" style="animation-delay:0.1s"></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="nav-indicator">
+    <div class="dot" id="dot-0" onclick="Navigation.to(0)"></div>
+    <div class="dot active" id="dot-1" onclick="Navigation.to(1)"></div>
+    <div class="dot" id="dot-2" onclick="Navigation.to(2)"></div>
+  </div>
+
+  <div id="global-player" class="v-glass overflow-hidden">
+    <div class="absolute top-2 right-2 z-20 flex gap-2">
+      <button onclick="Player.minimize()" class="w-8 h-8 rounded-full bg-black/40 flex items-center justify-center hover:bg-white/10 transition">
+        <i data-lucide="minus" class="w-4 h-4 text-white"></i>
+      </button>
+      <button onclick="Player.stop()" class="w-8 h-8 rounded-full bg-black/40 flex items-center justify-center hover:bg-red-500/20 transition">
+        <i data-lucide="x" class="w-4 h-4 text-white"></i>
+      </button>
+    </div>
+    <div id="player-frame-wrap" class="w-full h-full bg-black"></div>
+  </div>
+
+  <div id="modal-overlay" class="fixed inset-0 z-[200] hidden flex items-center justify-center p-4">
+    <div id="modal-content" class="v-glass p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto transform transition-all scale-95 opacity-0"></div>
+  </div>
+
+  <div id="di_toast" class="fixed top-24 left-1/2 -translate-x-1/2 z-[300] pointer-events-none flex flex-col items-center gap-2"></div>
+
+  <script>
+    /* =========================
+       CONSTANTS & CONFIG
+       ========================= */
+    const KEYS = {
+      CORTEX: 'di_cortex_v27_vis',
+      USER: 'di_userName',
+      ARCHETYPE: 'di_activeArchetype',
+      STATS: 'di_videoStats'
+    };
+
+    const ARCHETYPES = {
+      "ATLAS": { color: "#38BDF8", desc: "Estrutura & Governo" },
+      "NOVA":  { color: "#F97316", desc: "Inovação & Fluxo" },
+      "VITALIS":{ color:"#22C55E", desc: "Energia & Ação" },
+      "PULSE": { color: "#EC4899", desc: "Ritmo & Emoção" },
+      "ARTEMIS":{ color:"#A855F7", desc: "Foco & Caça" },
+      "SOLUS": { color: "#0EA5E9", desc: "Vazio & Verdade" }
+    };
+
+    const STATE = {
+      screen: 1,
+      cortex: { crystals: [] },
+      currentArchetype: 'ATLAS',
+      expandedCardId: null, // For Accordion
+      voice: null // TTS Voice
+    };
+
+    /* =========================
+       INIT
+       ========================= */
+    window.addEventListener('load', () => {
+      lucide.createIcons();
+      initSystem();
+      setupGestures();
+      TTS.init();
+      
+      // Initial Anim
+      setTimeout(() => {
+        document.body.style.opacity = 1;
+        Navigation.to(1); 
+      }, 100);
+    });
+
+    function initSystem() {
+      // Load Data
+      const savedArch = localStorage.getItem(KEYS.ARCHETYPE);
+      if(savedArch && ARCHETYPES[savedArch]) Archetype.set(savedArch);
+      else Archetype.set('ATLAS'); // Default
+
+      const savedCortex = localStorage.getItem(KEYS.CORTEX);
+      if(savedCortex) STATE.cortex = JSON.parse(savedCortex);
+      else STATE.cortex.crystals = [
+        { id: 1, content: "Bem-vindo ao Fusion OS Vision. Clique para expandir este cartão.", tags: ["sistema"], date: Date.now() }
+      ];
+
+      DualTube.render();
+      Cortex.render();
+      updateHeader();
+    }
+
+    /* =========================
+       TTS ENGINE (Text-To-Speech)
+       ========================= */
+    const TTS = {
+      synth: window.speechSynthesis,
+      voices: [],
+      init: () => {
+        if (!TTS.synth) return;
+        // Wait for voices to load
+        setTimeout(() => {
+            TTS.voices = TTS.synth.getVoices();
+            if(TTS.voices.length === 0) {
+                TTS.synth.onvoiceschanged = () => { TTS.voices = TTS.synth.getVoices(); };
+            }
+        }, 100);
+      },
+      speak: (text) => {
+        if (TTS.synth.speaking) {
+           TTS.synth.cancel();
+           // Toggle off UI
+           document.getElementById('tts-indicator').classList.add('hidden');
+           document.getElementById('tts-indicator').classList.remove('speaking');
+           return; 
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 1.1; // Slightly faster for modern feel
+        utterance.pitch = 1.0;
+
+        // Try to find a good voice
+        const preferredVoice = TTS.voices.find(v => v.lang.includes('pt-BR') && (v.name.includes('Google') || v.name.includes('Luciana')));
+        if (preferredVoice) utterance.voice = preferredVoice;
+
+        // UI Events
+        utterance.onstart = () => {
+            const ind = document.getElementById('tts-indicator');
+            ind.classList.remove('hidden');
+            // Force reflow
+            void ind.offsetWidth;
+            ind.classList.add('speaking');
+            toast('Reproduzindo áudio...');
+        };
+        utterance.onend = () => {
+            const ind = document.getElementById('tts-indicator');
+            ind.classList.remove('speaking');
+            setTimeout(() => ind.classList.add('hidden'), 300);
+        };
+
+        TTS.synth.speak(utterance);
+      }
+    };
+
+    /* =========================
+       IDENTITY & THEME
+       ========================= */
+    const Archetype = {
+      set: (key) => {
+        STATE.currentArchetype = key;
+        localStorage.setItem(KEYS.ARCHETYPE, key);
+        const data = ARCHETYPES[key];
+        
+        // Update CSS Vars
+        const r = document.documentElement;
+        r.style.setProperty('--active-color', data.color);
+        r.style.setProperty('--active-glow', data.color); // simpler glow logic
+        
+        // Update Orbs
+        document.getElementById('orb-1').style.background = data.color;
+        
+        updateHeader();
+      }
+    };
+
+    function updateHeader() {
+      const arch = STATE.currentArchetype;
+      document.getElementById('displayArchetypeBadge').innerText = arch;
+      document.getElementById('displayUserHeader').innerText = "FUSION OS";
+      document.getElementById('archetype-status-text').innerText = ARCHETYPES[arch].desc;
+      document.getElementById('hero-title').style.backgroundImage = `linear-gradient(to bottom, #fff, ${ARCHETYPES[arch].color})`;
+    }
+
+    /* =========================
+       NAVIGATION & GESTURES
+       ========================= */
+    const Navigation = {
+      to: (idx) => {
+        STATE.screen = idx;
+        const vp = document.getElementById('universe-viewport');
+        vp.style.transform = `translateX(-${idx * 100}vw)`;
+        
+        // Update dots
+        [0,1,2].forEach(i => {
+            const d = document.getElementById(`dot-${i}`);
+            if(i === idx) d.classList.add('active');
+            else d.classList.remove('active');
+        });
+
+        // Hide search keyboard if leaving cortex
+        if(idx !== 0) document.getElementById('memory-search').blur();
+      }
+    };
+
+    function setupGestures() {
+      let tsX = 0;
+      document.addEventListener('touchstart', e => tsX = e.touches[0].clientX, {passive:true});
+      document.addEventListener('touchend', e => {
+        const diff = tsX - e.changedTouches[0].clientX;
+        if(Math.abs(diff) > 80) { // Swipe threshold
+           if(diff > 0 && STATE.screen < 2) Navigation.to(STATE.screen + 1);
+           if(diff < 0 && STATE.screen > 0) Navigation.to(STATE.screen - 1);
+        }
+      }, {passive:true});
+    }
+
+    /* =========================
+       CORTEX (ACCORDION LOGIC)
+       ========================= */
+    const Cortex = {
+      render: () => {
+        const container = document.getElementById('crystal-container');
+        const query = document.getElementById('memory-search').value.toLowerCase();
+        
+        const filtered = STATE.cortex.crystals.filter(c => 
+            c.content.toLowerCase().includes(query) || (c.tags && c.tags.some(t => t.includes(query)))
+        );
+
+        container.innerHTML = filtered.map(c => {
+          const isExpanded = STATE.expandedCardId === c.id;
+          const dateStr = new Date(c.date || Date.now()).toLocaleDateString('pt-BR');
+          
+          return `
+          <div class="v-glass memory-card p-5 ${isExpanded ? 'expanded' : ''}" onclick="Cortex.toggle(${c.id})">
+            <div class="card-header">
+                <div class="flex flex-col">
+                    <span class="text-xs font-bold text-white/40 uppercase tracking-widest mb-1">REGISTRO #${c.id} • ${dateStr}</span>
+                    <div class="text-lg font-medium text-white/90 truncate pr-4 leading-tight" style="${isExpanded?'white-space:normal':''}">${c.content.substring(0, 50)}${c.content.length>50?'...':''}</div>
+                </div>
+                <div class="text-white/30 transition-transform ${isExpanded?'rotate-180':''}">
+                    <i data-lucide="chevron-down"></i>
+                </div>
+            </div>
+
+            <div class="card-content">
+                <p class="text-sm text-white/70 leading-relaxed font-light mt-2 mb-4 border-l-2 border-[var(--active-color)] pl-3">
+                    ${c.content}
+                </p>
+                
+                <div class="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
+                   <div class="flex gap-2">
+                      ${(c.tags||[]).map(t => `<span class="text-[10px] px-2 py-1 rounded bg-white/5 border border-white/10 uppercase">${t}</span>`).join('')}
+                   </div>
+                   <div class="flex gap-2">
+                      <button onclick="event.stopPropagation(); TTS.speak('${c.content.replace(/'/g, "\\'")}')" class="p-2 rounded-full hover:bg-white/10" title="Ler em voz alta">
+                         <i data-lucide="volume-2" class="w-4 h-4"></i>
+                      </button>
+                      <button onclick="event.stopPropagation(); Cortex.delete(${c.id})" class="p-2 rounded-full hover:bg-red-500/20 text-red-400">
+                         <i data-lucide="trash-2" class="w-4 h-4"></i>
+                      </button>
+                   </div>
+                </div>
+            </div>
+          </div>
+          `;
+        }).join('');
+        lucide.createIcons();
+      },
+      toggle: (id) => {
+        // Accordion logic: toggle, or close if same
+        STATE.expandedCardId = (STATE.expandedCardId === id) ? null : id;
+        Cortex.render();
+      },
+      openNewMemory: () => {
+        Modal.show(`
+          <h3 class="text-xl font-bold mb-4">Novo Cristal</h3>
+          <textarea id="new-mem-txt" class="w-full h-32 bg-black/20 border border-white/10 rounded-xl p-4 text-white placeholder-white/30 focus:border-cyan-400 transition outline-none resize-none" placeholder="O que você deseja preservar?"></textarea>
+          <input id="new-mem-tags" class="w-full mt-3 bg-black/20 border border-white/10 rounded-xl p-3 text-sm" placeholder="Tags (separadas por vírgula)">
+          <div class="flex justify-end gap-3 mt-6">
+            <button onclick="Modal.hide()" class="v-pill hover:bg-white/10">Cancelar</button>
+            <button onclick="Cortex.save()" class="v-pill bg-white/10 border-cyan-500/50 text-cyan-400">Cristalizar</button>
+          </div>
+        `);
+        setTimeout(()=>document.getElementById('new-mem-txt').focus(), 100);
+      },
+      save: () => {
+        const txt = document.getElementById('new-mem-txt').value;
+        if(!txt) return;
+        const tags = document.getElementById('new-mem-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+        STATE.cortex.crystals.unshift({ id: Date.now(), content: txt, tags, date: Date.now() });
+        localStorage.setItem(KEYS.CORTEX, JSON.stringify(STATE.cortex));
+        Cortex.render();
+        Modal.hide();
+        toast('Memória salva.');
+      },
+      delete: (id) => {
+        if(!confirm('Dissolver memória?')) return;
+        STATE.cortex.crystals = STATE.cortex.crystals.filter(c => c.id !== id);
+        localStorage.setItem(KEYS.CORTEX, JSON.stringify(STATE.cortex));
+        Cortex.render();
+      }
+    };
+
+    /* =========================
+       PLAYER & DUALTUBE
+       ========================= */
+    const Player = {
+        play: (id) => {
+            const gp = document.getElementById('global-player');
+            const fw = document.getElementById('player-frame-wrap');
+            fw.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}?autoplay=1&modestbranding=1&controls=0&rel=0&enablejsapi=1" frameborder="0" allow="autoplay; encrypted-media"></iframe>`;
+            
+            gp.classList.remove('hidden');
+            // Small delay for transition
+            setTimeout(() => {
+                gp.classList.add('active');
+                gp.classList.remove('minimized');
+            }, 50);
+        },
+        minimize: () => {
+            document.getElementById('global-player').classList.toggle('minimized');
+        },
+        stop: () => {
+            const gp = document.getElementById('global-player');
+            gp.classList.remove('active');
+            setTimeout(() => {
+                gp.classList.add('hidden');
+                document.getElementById('player-frame-wrap').innerHTML = '';
+            }, 500);
+        }
+    };
+
+    const DualTube = {
+        data: [
+            { title: "Focus & Flow", vids: ["Bt_rLbMjJDk", "_0wVkryxanE"] },
+            { title: "Deep Mind", vids: ["qldgs0aLdB0", "hfQ1L6fCfAo"] }
+        ],
+        render: () => {
+            const el = document.getElementById('video-categories');
+            el.innerHTML = DualTube.data.map(cat => `
+                <div>
+                    <h3 class="text-lg font-medium mb-4 pl-1 border-l-2 border-white/20">${cat.title}</h3>
+                    <div class="flex gap-4 overflow-x-auto pb-4 snap-x">
+                        ${cat.vids.map(id => `
+                           <div class="flex-shrink-0 w-60 aspect-video rounded-2xl overflow-hidden relative cursor-pointer group border border-white/5 hover:border-white/30 transition-all snap-start shadow-lg" onclick="Player.play('${id}')">
+                              <img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition duration-700">
+                              <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
+                                  <div class="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
+                                     <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+                                  </div>
+                              </div>
+                           </div> 
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+    };
+
+    /* =========================
+       UTILS (Modal, Toast, Orb)
+       ========================= */
+    const Modal = {
+        show: (html) => {
+            const ov = document.getElementById('modal-overlay');
+            const ct = document.getElementById('modal-content');
+            ct.innerHTML = html;
+            ov.classList.remove('hidden');
+            setTimeout(() => {
+                ct.style.opacity = '1';
+                ct.style.transform = 'scale(1)';
+            }, 10);
+        },
+        hide: () => {
+            const ov = document.getElementById('modal-overlay');
+            const ct = document.getElementById('modal-content');
+            ct.style.opacity = '0';
+            ct.style.transform = 'scale(0.95)';
+            setTimeout(() => ov.classList.add('hidden'), 300);
+        }
+    };
+
+    const Identity = {
+        openInfodoseModal: () => {
+             const html = `
+                <h3 class="text-xl font-bold mb-6">Configuração Neural</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    ${Object.keys(ARCHETYPES).map(k => `
+                        <button onclick="Archetype.set('${k}'); Modal.hide()" 
+                        class="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 flex flex-col items-center gap-2 transition hover:scale-105">
+                            <div class="w-3 h-3 rounded-full" style="background:${ARCHETYPES[k].color}; box-shadow: 0 0 10px ${ARCHETYPES[k].color}"></div>
+                            <span class="text-xs font-bold">${k}</span>
+                        </button>
+                    `).join('')}
+                </div>
+             `;
+             Modal.show(html);
+        },
+        showInfodoseModal: () => Identity.openInfodoseModal() // Alias
+    };
+
+    function toast(msg) {
+        const c = document.getElementById('di_toast');
+        const el = document.createElement('div');
+        el.className = "v-pill bg-black/80 border-white/20 text-xs shadow-xl animate-[bounce_0.5s]";
+        el.innerText = msg;
+        c.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+    }
+
+    const Orb = {
+        start: (e) => {
+            // Simple visual interaction for the orb
+            e.preventDefault();
+            const orb = document.getElementById('hero-orb');
+            orb.style.transform = "scale(0.9)";
+            setTimeout(() => orb.style.transform = "scale(1)", 200);
+            toast("Sincronização Neural...");
+        }
+    };
+  </script>
+</body>
+</html>
